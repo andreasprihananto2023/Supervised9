@@ -5,7 +5,18 @@ import pickle
 
 # Memuat model Random Forest yang telah dilatih
 with open('best_rf_model.pkl', 'rb') as model_file:
-    best_rf = pickle.load(model_file)
+    model_info = pickle.load(model_file)
+    
+# Ekstrak model dan informasi fitur
+if isinstance(model_info, dict):
+    best_rf = model_info['model']
+    features = model_info['features']
+else:
+    # Untuk backward compatibility jika model lama
+    best_rf = model_info
+    features = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
+               'Distance (km)', 'Topping Density', 'Traffic Level', 
+               'Is Peak Hour', 'Is Weekend']
 
 # Membangun aplikasi Streamlit
 def predict_estimated_duration():
@@ -39,7 +50,7 @@ def predict_estimated_duration():
         is_weekend = st.selectbox("Is Weekend?", [0, 1], index=0,
                                 help="Apakah hari weekend? (Berdasarkan bulan 6,7,8,9)")
 
-    # Data baru untuk prediksi
+    # Data baru untuk prediksi - pastikan urutan dan nama kolom sesuai dengan training
     new_data = pd.DataFrame({
         'Pizza Complexity': [pizza_complexity],
         'Order Hour': [order_hour],
@@ -50,6 +61,9 @@ def predict_estimated_duration():
         'Is Peak Hour': [is_peak_hour],
         'Is Weekend': [is_weekend]
     })
+    
+    # Pastikan urutan kolom sesuai dengan yang digunakan saat training
+    new_data = new_data[features]
 
     # Tombol untuk prediksi
     if st.button("Prediksi Estimasi Durasi", type="primary"):
