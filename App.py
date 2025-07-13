@@ -16,10 +16,10 @@ st.set_page_config(
 def load_model():
     """Load the trained model with caching"""
     try:
-        if not os.path.exists('best_rf_model.pkl'):
-            return None, "Model file 'best_rf_model.pkl' not found. Please run the training script first."
+        if not os.path.exists('realistic_rf_model.pkl'):
+            return None, "Model file 'realistic_rf_model.pkl' not found. Please run the realistic training script first."
         
-        with open('best_rf_model.pkl', 'rb') as model_file:
+        with open('realistic_rf_model.pkl', 'rb') as model_file:
             model_info = pickle.load(model_file)
         
         if isinstance(model_info, dict):
@@ -62,8 +62,13 @@ def main():
         
         perf = model_data['performance']
         if perf:
-            st.metric("R² Score", f"{perf.get('r2', 0):.3f}")
-            st.metric("MAE (minutes)", f"{perf.get('mae', 0):.2f}")
+            st.metric("R² Score", f"{perf.get('test_r2', 0):.3f}")
+            st.metric("MAE (minutes)", f"{perf.get('test_mae', 0):.2f}")
+            st.metric("CV MAE", f"{perf.get('cv_mae', 0):.2f}")
+            
+            # Show prediction uncertainty
+            if 'prediction_std' in perf:
+                st.metric("Prediction Std", f"±{perf.get('prediction_std', 0):.1f} min")
         
         st.subheader("Features Used:")
         for i, feature in enumerate(model_data['features'], 1):
