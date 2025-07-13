@@ -78,22 +78,27 @@ def predict_estimated_duration():
             if hasattr(best_rf, 'feature_names_in_'):
                 st.write(f"Expected features: {list(best_rf.feature_names_in_)}")
             
-            # Siapkan data dalam format numpy array
-            # Urutan: Pizza Complexity, Order Hour, Restaurant Avg Time, Distance (km), 
-            #         Topping Density, Traffic Level, Is Peak Hour, Is Weekend
-# Input data should have 8 features, excluding 'Estimated Duration (min)'
-# Define the correct order of the input features (removing 'Estimated Duration (min)')
-            input_data = np.array([[pizza_complexity, order_hour, restaurant_avg_time, 
-                                    distance, topping_density, traffic_level, 
-                                    is_peak_hour, is_weekend]])
+            # QUICK FIX: Check if model expects 9 features (including target variable)
+            if best_rf.n_features_in_ == 9:
+                st.warning("⚠️ Model was trained with target variable included. Using workaround...")
+                # Add a dummy value for 'Estimated Duration (min)' at position 3
+                # Order based on the expected features shown in debug
+                input_data = np.array([[pizza_complexity, order_hour, restaurant_avg_time, 
+                                        0,  # Dummy value for 'Estimated Duration (min)'
+                                        distance, topping_density, traffic_level, 
+                                        is_peak_hour, is_weekend]])
+                st.write("⚠️ Added dummy value for 'Estimated Duration (min)' at position 4")
+            else:
+                # Normal case - 8 features without target variable
+                input_data = np.array([[pizza_complexity, order_hour, restaurant_avg_time, 
+                                        distance, topping_density, traffic_level, 
+                                        is_peak_hour, is_weekend]])
             
             # Check the shape and print the features
             st.write(f"Input data shape: {input_data.shape}")
             st.write(f"Input features: {input_data[0]}")
-
             
             # Prediksi estimated duration menggunakan model
-            predicted_duration = best_rf.predict(input_data)
             predicted_duration = best_rf.predict(input_data)
             
             st.success(f"**Estimasi Durasi Pengiriman: {predicted_duration[0]:.2f} menit**")
@@ -124,8 +129,18 @@ def predict_estimated_duration():
     # Informasi tambahan
     st.markdown("---")
     st.markdown("### 📊 Informasi Fitur")
+    
+    # Show different info based on model type
+    if best_rf.n_features_in_ == 9:
+        st.warning("⚠️ **Model Issue Detected**: This model was trained with the target variable included.")
+        st.markdown("""
+        **Recommended Action**: Retrain the model using the corrected training script.
+        
+        **Current Workaround**: The app adds a dummy value for 'Estimated Duration (min)' during prediction.
+        """)
+    
     st.markdown("""
-    Urutan fitur yang digunakan dalam model:
+    **Input features untuk prediksi**:
     1. **Pizza Complexity**: Tingkat kesulitan pembuatan pizza
     2. **Order Hour**: Jam pemesanan (mempengaruhi beban kerja)
     3. **Restaurant Avg Time**: Rata-rata waktu persiapan restoran
@@ -134,6 +149,12 @@ def predict_estimated_duration():
     6. **Traffic Level**: Kondisi lalu lintas
     7. **Peak Hour**: Jam sibuk (11-14 dan 17-20)
     8. **Weekend**: Hari weekend berdasarkan bulan tertentu
+    """)
+    
+    # Recommendation box
+    st.info("""
+    💡 **Rekomendasi**: Untuk hasil yang optimal, retrain model menggunakan script yang telah diperbaiki 
+    yang tidak menyertakan target variable dalam features.
     """)
 
 if __name__ == "__main__":
