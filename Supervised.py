@@ -14,7 +14,7 @@ data['Is Peak Hour'] = np.where(((data['Order Hour'] >= 11) & (data['Order Hour'
 # Menambahkan fitur Weekend/Non-Weekend
 data['Is Weekend'] = np.where(data['Order Month'].isin([6, 7, 8, 9]), 1, 0)
 
-# Pilih fitur yang relevan untuk analisis
+# Pilih fitur yang relevan untuk analisis (menghapus 'Estimated Duration (min)')
 features = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
             'Distance (km)', 'Topping Density', 'Traffic Level', 
             'Is Peak Hour', 'Is Weekend']
@@ -22,8 +22,13 @@ features = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time',
 # Ambil data fitur relevan
 X = data[features].dropna()  # Pastikan tidak ada nilai NaN
 
-# Target variabel untuk prediksi: 'Estimated Duration (min)' (bukan Delay)
+# Target variabel untuk prediksi: 'Estimated Duration (min)'
 y = data['Estimated Duration (min)']  # Target: Estimated Duration (min)
+
+# Hapus baris yang memiliki NaN pada target
+mask = ~y.isna()
+X = X[mask]
+y = y[mask]
 
 # Pisahkan data menjadi train set dan test set
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0)
@@ -55,3 +60,24 @@ with open('best_rf_model.pkl', 'wb') as model_file:
     pickle.dump(best_rf, model_file)
 
 print(f"Best parameters found: {grid_search.best_params_}")
+
+# Evaluasi model pada test set
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+y_pred = best_rf.predict(X_test)
+mae = mean_absolute_error(y_test, y_pred)
+mse = mean_squared_error(y_test, y_pred)
+r2 = r2_score(y_test, y_pred)
+
+print(f"Mean Absolute Error: {mae:.2f}")
+print(f"Mean Squared Error: {mse:.2f}")
+print(f"R² Score: {r2:.2f}")
+
+# Feature importance
+feature_importance = pd.DataFrame({
+    'feature': features,
+    'importance': best_rf.feature_importances_
+}).sort_values('importance', ascending=False)
+
+print("\nFeature Importance:")
+print(feature_importance)
