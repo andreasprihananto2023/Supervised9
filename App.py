@@ -82,13 +82,15 @@ def predict_estimated_duration():
             # Urutan: Pizza Complexity, Order Hour, Restaurant Avg Time, Distance (km), 
             #         Topping Density, Traffic Level, Is Peak Hour, Is Weekend
 # Input data should have 8 features, excluding 'Estimated Duration (min)'
+# Define the correct order of the input features (removing 'Estimated Duration (min)')
             input_data = np.array([[pizza_complexity, order_hour, restaurant_avg_time, 
-                                distance, topping_density, traffic_level, 
-                                is_peak_hour, is_weekend]])
-
+                                    distance, topping_density, traffic_level, 
+                                    is_peak_hour, is_weekend]])
             
+            # Check the shape and print the features
             st.write(f"Input data shape: {input_data.shape}")
             st.write(f"Input features: {input_data[0]}")
+
             
             # Prediksi estimated duration menggunakan model
             predicted_duration = best_rf.predict(input_data)
