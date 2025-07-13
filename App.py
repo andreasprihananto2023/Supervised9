@@ -7,7 +7,7 @@ import pickle
 with open('best_rf_model.pkl', 'rb') as model_file:
     best_rf = pickle.load(model_file)
 
-# Definisikan kolom fitur yang sama dengan X_train di pelatihan
+# Memuat kembali fitur yang digunakan saat pelatihan
 feature_columns = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
                    'Distance (km)', 'Topping Density', 'Traffic Level', 
                    'Is Peak Hour', 'Is Weekend']
