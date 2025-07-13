@@ -16,15 +16,14 @@ data['Is Weekend'] = np.where(data['Order Month'].isin([6, 7, 8, 9]), 1, 0)
 
 # Pilih fitur yang relevan untuk analisis
 features = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
-            'Estimated Duration (min)', 'Distance (km)', 'Topping Density', 'Traffic Level', 
+            'Distance (km)', 'Topping Density', 'Traffic Level', 
             'Is Peak Hour', 'Is Weekend']
 
 # Ambil data fitur relevan
 X = data[features].dropna()  # Pastikan tidak ada nilai NaN
 
-# Target variabel untuk prediksi: 'Delay (min)'
-data['Delay (min)'] = data['Delivery Duration (min)'] - data['Estimated Duration (min)']
-y = data['Delay (min)']  # Target: Delay (min)
+# Target variabel untuk prediksi: 'Estimated Duration (min)' (bukan Delay)
+y = data['Estimated Duration (min)']  # Target: Estimated Duration (min)
 
 # Pisahkan data menjadi train set dan test set
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0)
