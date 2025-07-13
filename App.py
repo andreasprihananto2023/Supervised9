@@ -33,6 +33,9 @@ def predict_duration():
         'Is Weekend': [is_weekend]
     })
 
+    # Menyusun ulang kolom pada new_data sesuai dengan urutan X_train.columns
+    new_data = new_data[X_train.columns]
+
     # Prediksi Estimated Duration menggunakan model
     predicted_duration = best_rf.predict(new_data)
     st.write(f"Predicted Estimated Duration (min): {predicted_duration[0]:.2f} minutes")
