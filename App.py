@@ -16,10 +16,10 @@ st.set_page_config(
 def load_model():
     """Load the trained model with caching"""
     try:
-        if not os.path.exists('realistic_rf_model.pkl'):
-            return None, "Model file 'realistic_rf_model.pkl' not found. Please run the realistic training script first."
+        if not os.path.exists('best_rf_model.pkl'):
+            return None, "Model file 'best_rf_model.pkl' not found. Please run the realistic training script first."
         
-        with open('realistic_rf_model.pkl', 'rb') as model_file:
+        with open('best_rf_model.pkl', 'rb') as model_file:
             model_info = pickle.load(model_file)
         
         if isinstance(model_info, dict):
