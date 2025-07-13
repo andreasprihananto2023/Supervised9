@@ -81,9 +81,11 @@ def predict_estimated_duration():
             # Siapkan data dalam format numpy array
             # Urutan: Pizza Complexity, Order Hour, Restaurant Avg Time, Distance (km), 
             #         Topping Density, Traffic Level, Is Peak Hour, Is Weekend
+# Input data should have 8 features, excluding 'Estimated Duration (min)'
             input_data = np.array([[pizza_complexity, order_hour, restaurant_avg_time, 
-                                  distance, topping_density, traffic_level, 
-                                  is_peak_hour, is_weekend]])
+                                distance, topping_density, traffic_level, 
+                                is_peak_hour, is_weekend]])
+
             
             st.write(f"Input data shape: {input_data.shape}")
             st.write(f"Input features: {input_data[0]}")
