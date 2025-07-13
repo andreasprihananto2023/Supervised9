@@ -7,6 +7,11 @@ import pickle
 with open('best_rf_model.pkl', 'rb') as model_file:
     best_rf = pickle.load(model_file)
 
+# Definisikan kolom fitur yang sama dengan X_train di pelatihan
+feature_columns = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
+                   'Distance (km)', 'Topping Density', 'Traffic Level', 
+                   'Is Peak Hour', 'Is Weekend']
+
 # Membangun aplikasi Streamlit
 def predict_duration():
     st.title("Prediksi Estimated Duration Pengiriman")
@@ -33,8 +38,8 @@ def predict_duration():
         'Is Weekend': [is_weekend]
     })
 
-    # Menyusun ulang kolom pada new_data sesuai dengan urutan X_train.columns
-    new_data = new_data[X_train.columns]
+    # Menyusun ulang kolom pada new_data sesuai dengan urutan feature_columns
+    new_data = new_data[feature_columns]
 
     # Prediksi Estimated Duration menggunakan model
     predicted_duration = best_rf.predict(new_data)
