@@ -55,9 +55,15 @@ grid_search.fit(X_train, y_train)
 # Menyimpan model terbaik yang ditemukan
 best_rf = grid_search.best_estimator_
 
-# Menyimpan model terlatih ke file pickle
+# Menyimpan model terlatih dan informasi fitur ke file pickle
+model_info = {
+    'model': best_rf,
+    'features': features,
+    'feature_order': features
+}
+
 with open('best_rf_model.pkl', 'wb') as model_file:
-    pickle.dump(best_rf, model_file)
+    pickle.dump(model_info, model_file)
 
 print(f"Best parameters found: {grid_search.best_params_}")
 
