@@ -15,9 +15,14 @@ data['Is Peak Hour'] = np.where(((data['Order Hour'] >= 11) & (data['Order Hour'
 data['Is Weekend'] = np.where(data['Order Month'].isin([6, 7, 8, 9]), 1, 0)
 
 # Pilih fitur yang relevan untuk analisis (menghapus 'Estimated Duration (min)')
+# PENTING: Urutan fitur ini harus konsisten dengan yang digunakan dalam aplikasi
 features = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
             'Distance (km)', 'Topping Density', 'Traffic Level', 
             'Is Peak Hour', 'Is Weekend']
+
+print("Feature order used in training:")
+for i, feature in enumerate(features):
+    print(f"{i+1}. {feature}")
 
 # Ambil data fitur relevan
 X = data[features].dropna()  # Pastikan tidak ada nilai NaN
