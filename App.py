@@ -6,16 +6,34 @@ import pickle
 # Memuat model Random Forest yang telah dilatih
 try:
     with open('best_rf_model.pkl', 'rb') as model_file:
-        model_data = pickle.load(model_file)
+        model_info = pickle.load(model_file)
         
-    # Handle both old and new model formats
-    if isinstance(model_data, dict):
-        best_rf = model_data['model']
+    # Ekstrak informasi model
+    if isinstance(model_info, dict):
+        best_rf = model_info['model']
+        features = model_info['features']
+        n_features = model_info['n_features']
+        
+        st.sidebar.success(f"✅ Model loaded successfully!")
+        st.sidebar.write(f"Expected features: {n_features}")
+        st.sidebar.write("Feature order:")
+        for i, feature in enumerate(features, 1):
+            st.sidebar.write(f"{i}. {feature}")
+            
+        if 'model_performance' in model_info:
+            perf = model_info['model_performance']
+            st.sidebar.write(f"Model R² Score: {perf['r2']:.3f}")
     else:
-        best_rf = model_data
+        # Fallback untuk model lama
+        best_rf = model_info
+        features = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
+                   'Distance (km)', 'Topping Density', 'Traffic Level', 
+                   'Is Peak Hour', 'Is Weekend']
+        n_features = len(features)
+        st.sidebar.warning("⚠️ Using fallback feature configuration")
         
 except Exception as e:
-    st.error(f"Error loading model: {str(e)}")
+    st.error(f"❌ Error loading model: {str(e)}")
     st.stop()
 
 # Membangun aplikasi Streamlit
@@ -53,6 +71,13 @@ def predict_estimated_duration():
     # Tombol untuk prediksi
     if st.button("Prediksi Estimasi Durasi", type="primary"):
         try:
+            # Debug: cek jumlah fitur yang diharapkan model
+            st.write("**Debug Info:**")
+            st.write(f"Model expects {best_rf.n_features_in_} features")
+            
+            if hasattr(best_rf, 'feature_names_in_'):
+                st.write(f"Expected features: {list(best_rf.feature_names_in_)}")
+            
             # Siapkan data dalam format numpy array
             # Urutan: Pizza Complexity, Order Hour, Restaurant Avg Time, Distance (km), 
             #         Topping Density, Traffic Level, Is Peak Hour, Is Weekend
@@ -60,7 +85,11 @@ def predict_estimated_duration():
                                   distance, topping_density, traffic_level, 
                                   is_peak_hour, is_weekend]])
             
+            st.write(f"Input data shape: {input_data.shape}")
+            st.write(f"Input features: {input_data[0]}")
+            
             # Prediksi estimated duration menggunakan model
+            predicted_duration = best_rf.predict(input_data)
             predicted_duration = best_rf.predict(input_data)
             
             st.success(f"**Estimasi Durasi Pengiriman: {predicted_duration[0]:.2f} menit**")
