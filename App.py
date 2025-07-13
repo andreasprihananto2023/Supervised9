@@ -8,14 +8,13 @@ with open('best_rf_model.pkl', 'rb') as model_file:
     best_rf = pickle.load(model_file)
 
 # Membangun aplikasi Streamlit
-def predict_delay():
-    st.title("Prediksi Keterlambatan Pengiriman")
+def predict_duration():
+    st.title("Prediksi Estimated Duration Pengiriman")
 
     # Input untuk data baru
     pizza_complexity = st.slider("Pizza Complexity", 1, 5, 3)
     order_hour = st.slider("Order Hour (Jam Pemesanan)", 0, 23, 14)
     restaurant_avg_time = st.slider("Restaurant Average Time (Menit)", 10, 60, 25)
-    estimated_duration = st.slider("Estimated Duration (Menit)", 10, 60, 30)
     distance = st.slider("Distance (km)", 1, 10, 5)
     topping_density = st.slider("Topping Density", 1, 5, 2)
     traffic_level = st.slider("Traffic Level", 1, 5, 3)
@@ -27,7 +26,6 @@ def predict_delay():
         'Pizza Complexity': [pizza_complexity],
         'Order Hour': [order_hour],
         'Restaurant Avg Time': [restaurant_avg_time],
-        'Estimated Duration (min)': [estimated_duration],
         'Distance (km)': [distance],
         'Topping Density': [topping_density],
         'Traffic Level': [traffic_level],
@@ -35,14 +33,15 @@ def predict_delay():
         'Is Weekend': [is_weekend]
     })
 
-    # Prediksi delay menggunakan model
-    predicted_delay = best_rf.predict(new_data)
-    st.write(f"Predicted Delay (min): {predicted_delay[0]:.2f} minutes")
+    # Prediksi Estimated Duration menggunakan model
+    predicted_duration = best_rf.predict(new_data)
+    st.write(f"Predicted Estimated Duration (min): {predicted_duration[0]:.2f} minutes")
 
-    if predicted_delay[0] > 0:
-        st.write(f"Akan terjadi keterlambatan sebesar {predicted_delay[0]:.2f} menit.")
+    # Memberi tahu pengguna jika estimasi waktu pengiriman lebih cepat atau terlambat
+    if predicted_duration[0] > 30:  # Jika estimasi lebih besar dari 30 menit, anggap itu terlambat
+        st.write(f"Estimasi pengiriman seharusnya lebih lama. Prediksi Estimated Duration adalah {predicted_duration[0]:.2f} menit.")
     else:
-        st.write("Tidak ada keterlambatan.")
+        st.write(f"Estimasi pengiriman lebih cepat dari yang diharapkan.")
 
 if __name__ == "__main__":
-    predict_delay()
+    predict_duration()
