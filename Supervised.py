@@ -20,6 +20,7 @@ data['Is Peak Hour'] = np.where(((data['Order Hour'] >= 11) & (data['Order Hour'
 data['Is Weekend'] = np.where(data['Order Month'].isin([6, 7, 8, 9]), 1, 0)
 
 # PENTING: Definisi fitur yang akan digunakan (TANPA Estimated Duration)
+# Removed 'Estimated Duration (min)' from features - this is our target variable!
 features = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
             'Distance (km)', 'Topping Density', 'Traffic Level', 
             'Is Peak Hour', 'Is Weekend']
@@ -34,7 +35,7 @@ if missing_features:
     print(f"\nMissing features: {missing_features}")
     exit()
 
-# Ambil data fitur relevan
+# Ambil data fitur relevan (INPUT FEATURES ONLY)
 X = data[features].copy()
 print(f"\nFeature matrix shape: {X.shape}")
 print(f"Feature matrix columns: {X.columns.tolist()}")
@@ -129,3 +130,8 @@ try:
     print(f"Dummy prediction successful: {dummy_pred[0]:.2f} minutes")
 except Exception as e:
     print(f"Dummy prediction failed: {e}")
+
+print(f"\nVerification:")
+print(f"Features used for training: {len(features)}")
+print(f"Dummy data features: {dummy_data.shape[1]}")
+print(f"Match: {len(features) == dummy_data.shape[1]}")
