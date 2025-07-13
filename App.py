@@ -7,24 +7,37 @@ import pickle
 with open('best_rf_model.pkl', 'rb') as model_file:
     best_rf = pickle.load(model_file)
 
-# Definisikan kolom fitur yang sama dengan X_train di pelatihan
-feature_columns = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
-                   'Distance (km)', 'Topping Density', 'Traffic Level', 
-                   'Is Peak Hour', 'Is Weekend']
-
 # Membangun aplikasi Streamlit
-def predict_duration():
-    st.title("Prediksi Estimated Duration Pengiriman")
+def predict_estimated_duration():
+    st.title("Prediksi Estimasi Durasi Pengiriman")
+    
+    st.markdown("""
+    Aplikasi ini memprediksi estimasi durasi pengiriman berdasarkan berbagai faktor
+    seperti kompleksitas pizza, jam pemesanan, jarak, dan kondisi lalu lintas.
+    """)
 
     # Input untuk data baru
-    pizza_complexity = st.slider("Pizza Complexity", 1, 5, 3)
-    order_hour = st.slider("Order Hour (Jam Pemesanan)", 0, 23, 14)
-    restaurant_avg_time = st.slider("Restaurant Average Time (Menit)", 10, 60, 25)
-    distance = st.slider("Distance (km)", 1, 10, 5)
-    topping_density = st.slider("Topping Density", 1, 5, 2)
-    traffic_level = st.slider("Traffic Level", 1, 5, 3)
-    is_peak_hour = st.selectbox("Is Peak Hour?", [0, 1], index=1)  # Peak hour (1 for yes, 0 for no)
-    is_weekend = st.selectbox("Is Weekend?", [0, 1], index=0)  # Weekend (1 for yes, 0 for no)
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        pizza_complexity = st.slider("Pizza Complexity", 1, 5, 3, 
+                                   help="Tingkat kompleksitas pizza (1=sederhana, 5=kompleks)")
+        order_hour = st.slider("Order Hour (Jam Pemesanan)", 0, 23, 14,
+                             help="Jam pemesanan dalam format 24 jam")
+        restaurant_avg_time = st.slider("Restaurant Average Time (Menit)", 10, 60, 25,
+                                       help="Rata-rata waktu persiapan restoran")
+        distance = st.slider("Distance (km)", 1, 10, 5,
+                           help="Jarak pengiriman dalam kilometer")
+    
+    with col2:
+        topping_density = st.slider("Topping Density", 1, 5, 2,
+                                  help="Kepadatan topping (1=sedikit, 5=banyak)")
+        traffic_level = st.slider("Traffic Level", 1, 5, 3,
+                                help="Tingkat kemacetan lalu lintas (1=lancar, 5=macet)")
+        is_peak_hour = st.selectbox("Is Peak Hour?", [0, 1], index=1,
+                                  help="Apakah waktu pemesanan dalam jam sibuk? (11-14 atau 17-20)")
+        is_weekend = st.selectbox("Is Weekend?", [0, 1], index=0,
+                                help="Apakah hari weekend? (Berdasarkan bulan 6,7,8,9)")
 
     # Data baru untuk prediksi
     new_data = pd.DataFrame({
@@ -38,18 +51,43 @@ def predict_duration():
         'Is Weekend': [is_weekend]
     })
 
-    # Menyusun ulang kolom pada new_data sesuai dengan urutan feature_columns
-    new_data = new_data[feature_columns]
-
-    # Prediksi Estimated Duration menggunakan model
-    predicted_duration = best_rf.predict(new_data)
-    st.write(f"Predicted Estimated Duration (min): {predicted_duration[0]:.2f} minutes")
-
-    # Memberi tahu pengguna jika estimasi waktu pengiriman lebih cepat atau terlambat
-    if predicted_duration[0] > 30:  # Jika estimasi lebih besar dari 30 menit, anggap itu terlambat
-        st.write(f"Estimasi pengiriman seharusnya lebih lama. Prediksi Estimated Duration adalah {predicted_duration[0]:.2f} menit.")
-    else:
-        st.write(f"Estimasi pengiriman lebih cepat dari yang diharapkan.")
+    # Tombol untuk prediksi
+    if st.button("Prediksi Estimasi Durasi", type="primary"):
+        # Prediksi estimated duration menggunakan model
+        predicted_duration = best_rf.predict(new_data)
+        
+        st.success(f"**Estimasi Durasi Pengiriman: {predicted_duration[0]:.2f} menit**")
+        
+        # Kategorisasi berdasarkan durasi
+        if predicted_duration[0] <= 30:
+            st.info("🟢 Pengiriman Cepat - Estimasi waktu sangat baik!")
+        elif predicted_duration[0] <= 45:
+            st.warning("🟡 Pengiriman Normal - Estimasi waktu dalam batas wajar")
+        else:
+            st.error("🔴 Pengiriman Lambat - Estimasi waktu cukup lama")
+        
+        # Konversi ke jam dan menit untuk tampilan yang lebih user-friendly
+        hours = int(predicted_duration[0] // 60)
+        minutes = int(predicted_duration[0] % 60)
+        
+        if hours > 0:
+            st.write(f"📅 Estimasi waktu: {hours} jam {minutes} menit")
+        else:
+            st.write(f"📅 Estimasi waktu: {minutes} menit")
+    
+    # Informasi tambahan
+    st.markdown("---")
+    st.markdown("### 📊 Informasi Fitur")
+    st.markdown("""
+    - **Pizza Complexity**: Tingkat kesulitan pembuatan pizza
+    - **Order Hour**: Jam pemesanan (mempengaruhi beban kerja)
+    - **Restaurant Avg Time**: Rata-rata waktu persiapan restoran
+    - **Distance**: Jarak pengiriman
+    - **Topping Density**: Kepadatan topping pada pizza
+    - **Traffic Level**: Kondisi lalu lintas
+    - **Peak Hour**: Jam sibuk (11-14 dan 17-20)
+    - **Weekend**: Hari weekend berdasarkan bulan tertentu
+    """)
 
 if __name__ == "__main__":
-    predict_duration()
+    predict_estimated_duration()
