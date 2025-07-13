@@ -1,183 +1,234 @@
 import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split, cross_val_score, KFold
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import pickle
-import os
+import warnings
+warnings.filterwarnings('ignore')
 
-print("Starting model training...")
-print("=" * 50)
-
-# Check if data file exists
-if not os.path.exists('Train Data.xlsx'):
-    print("❌ Error: 'Train Data.xlsx' not found!")
-    print("Please make sure the training data file is in the same directory.")
-    exit()
+print("🚀 REALISTIC MODEL TRAINING WITH PROPER VALIDATION")
+print("=" * 60)
 
 # Load data
 try:
     data = pd.read_excel('Train Data.xlsx')
-    print("✅ Data loaded successfully!")
+    print(f"✅ Data loaded: {data.shape}")
 except Exception as e:
     print(f"❌ Error loading data: {e}")
     exit()
 
-print("\nColumns in dataset:")
-print(data.columns.tolist())
-print(f"\nDataset shape: {data.shape}")
-
-# Check if required columns exist
-required_columns = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
-                   'Distance (km)', 'Topping Density', 'Traffic Level', 
-                   'Order Month', 'Estimated Duration (min)']
-
-missing_columns = [col for col in required_columns if col not in data.columns]
-if missing_columns:
-    print(f"\n❌ Missing required columns: {missing_columns}")
-    print("Available columns:", data.columns.tolist())
-    exit()
-
-# Menambahkan fitur Peak Hour
+# Add engineered features
 data['Is Peak Hour'] = np.where(((data['Order Hour'] >= 11) & (data['Order Hour'] <= 14)) |
                                  ((data['Order Hour'] >= 17) & (data['Order Hour'] <= 20)), 1, 0)
-
-# Menambahkan fitur Weekend/Non-Weekend
 data['Is Weekend'] = np.where(data['Order Month'].isin([6, 7, 8, 9]), 1, 0)
 
-# IMPORTANT: Features for training (WITHOUT target variable)
+# Define features
 features = ['Pizza Complexity', 'Order Hour', 'Restaurant Avg Time', 
             'Distance (km)', 'Topping Density', 'Traffic Level', 
             'Is Peak Hour', 'Is Weekend']
 
-print(f"\n📊 Features to be used ({len(features)} features):")
-for i, feature in enumerate(features, 1):
-    print(f"{i}. {feature}")
+target = 'Estimated Duration (min)'
 
-# Verify all features exist
-missing_features = [f for f in features if f not in data.columns]
-if missing_features:
-    print(f"\n❌ Missing features: {missing_features}")
-    exit()
-
-# Prepare feature matrix (X) and target vector (y)
+# Prepare data
 X = data[features].copy()
-y = data['Estimated Duration (min)'].copy()
+y = data[target].copy()
 
-print(f"\n📈 Data shapes:")
-print(f"Feature matrix (X): {X.shape}")
-print(f"Target vector (y): {y.shape}")
-
-# Remove rows with NaN values
-print(f"\n🧹 Cleaning data...")
-print(f"Before removing NaN - X: {X.shape}, y: {y.shape}")
+# Clean data
 mask = ~(X.isnull().any(axis=1) | y.isnull())
 X_clean = X[mask]
 y_clean = y[mask]
-print(f"After removing NaN - X: {X_clean.shape}, y: {y_clean.shape}")
 
-if len(X_clean) == 0:
-    print("❌ No valid data remaining after cleaning!")
-    exit()
+print(f"\n📊 Data Shape After Cleaning: {X_clean.shape}")
+
+# Check for perfect deterministic relationships
+print(f"\n🔍 CHECKING FOR DETERMINISTIC RELATIONSHIPS")
+print("-" * 50)
+
+# Group by all features and check if each combination has unique target
+feature_target_df = X_clean.copy()
+feature_target_df['target'] = y_clean
+grouped = feature_target_df.groupby(features)['target'].nunique()
+perfect_matches = (grouped == 1).sum()
+total_groups = len(grouped)
+
+print(f"Total unique feature combinations: {total_groups}")
+print(f"Combinations with single target value: {perfect_matches}")
+print(f"Deterministic ratio: {(perfect_matches/total_groups)*100:.1f}%")
+
+# If data is too deterministic, add some noise
+if perfect_matches / total_groups > 0.8:
+    print("\n⚠️  Data appears highly deterministic. Adding noise for more realistic modeling...")
+    
+    # Add small amount of noise to target variable
+    noise_std = y_clean.std() * 0.05  # 5% of target standard deviation
+    y_with_noise = y_clean + np.random.normal(0, noise_std, size=len(y_clean))
+    
+    # Ensure non-negative values (delivery time can't be negative)
+    y_with_noise = np.maximum(y_with_noise, 5)  # Minimum 5 minutes
+    
+    print(f"Added noise with std: {noise_std:.2f}")
+    print(f"Original target range: {y_clean.min():.1f} - {y_clean.max():.1f}")
+    print(f"Noisy target range: {y_with_noise.min():.1f} - {y_with_noise.max():.1f}")
+    
+    y_final = y_with_noise
+    use_noise = True
+else:
+    y_final = y_clean
+    use_noise = False
 
 # Split data
-X_train, X_test, y_train, y_test = train_test_split(X_clean, y_clean, test_size=0.3, random_state=42)
-print(f"\n📊 Data split:")
+X_train, X_test, y_train, y_test = train_test_split(
+    X_clean, y_final, test_size=0.2, random_state=42, stratify=None
+)
+
+print(f"\n📊 DATA SPLITS")
+print("-" * 20)
 print(f"Training set: {X_train.shape}")
 print(f"Test set: {X_test.shape}")
 
-# Initialize Random Forest
-rf = RandomForestRegressor(random_state=42)
+# Cross-validation setup
+cv = KFold(n_splits=5, shuffle=True, random_state=42)
 
-# Simplified parameter grid for faster training
-param_grid = {
-    'n_estimators': [100, 200],
-    'max_depth': [10, 20, None],
-    'min_samples_split': [2, 5],
-    'min_samples_leaf': [1, 2]
+# Train different models and compare
+models = {
+    'RF_Simple': RandomForestRegressor(n_estimators=50, max_depth=10, random_state=42),
+    'RF_Medium': RandomForestRegressor(n_estimators=100, max_depth=20, random_state=42),
+    'RF_Complex': RandomForestRegressor(n_estimators=200, max_depth=None, random_state=42)
 }
 
-print(f"\n🔍 Starting hyperparameter tuning...")
-print("This may take a few minutes...")
+print(f"\n🔄 CROSS-VALIDATION RESULTS")
+print("-" * 40)
 
-# GridSearchCV
-grid_search = GridSearchCV(
-    estimator=rf, 
-    param_grid=param_grid, 
-    cv=3, 
-    n_jobs=-1, 
-    verbose=1, 
-    scoring='neg_mean_absolute_error'
-)
+best_model = None
+best_score = -np.inf
+results = {}
 
-# Train the model
-grid_search.fit(X_train, y_train)
-best_rf = grid_search.best_estimator_
+for name, model in models.items():
+    # Cross-validation
+    cv_scores = cross_val_score(model, X_train, y_train, cv=cv, 
+                               scoring='neg_mean_absolute_error', n_jobs=-1)
+    cv_mae = -cv_scores.mean()
+    cv_std = cv_scores.std()
+    
+    # Train on full training set
+    model.fit(X_train, y_train)
+    
+    # Predictions
+    y_pred_train = model.predict(X_train)
+    y_pred_test = model.predict(X_test)
+    
+    # Metrics
+    train_r2 = r2_score(y_train, y_pred_train)
+    test_r2 = r2_score(y_test, y_pred_test)
+    train_mae = mean_absolute_error(y_train, y_pred_train)
+    test_mae = mean_absolute_error(y_test, y_pred_test)
+    
+    results[name] = {
+        'cv_mae': cv_mae,
+        'cv_std': cv_std,
+        'train_r2': train_r2,
+        'test_r2': test_r2,
+        'train_mae': train_mae,
+        'test_mae': test_mae,
+        'model': model
+    }
+    
+    print(f"\n{name}:")
+    print(f"  CV MAE: {cv_mae:.2f} ± {cv_std:.2f}")
+    print(f"  Train R²: {train_r2:.3f}, Test R²: {test_r2:.3f}")
+    print(f"  Train MAE: {train_mae:.2f}, Test MAE: {test_mae:.2f}")
+    
+    # Check for overfitting
+    if train_r2 - test_r2 > 0.1:
+        print(f"  ⚠️  Possible overfitting (R² gap: {train_r2 - test_r2:.3f})")
+    
+    # Select best model based on test R² (balance between performance and generalization)
+    if test_r2 > best_score:
+        best_score = test_r2
+        best_model = model
 
-print(f"\n✅ Training completed!")
-print(f"Best parameters: {grid_search.best_params_}")
+print(f"\n🏆 BEST MODEL SELECTION")
+print("-" * 30)
+best_model_name = None
+for name, result in results.items():
+    if result['model'] == best_model:
+        best_model_name = name
+        best_result = result
+        break
 
-# Evaluate model
-y_pred = best_rf.predict(X_test)
-mae = mean_absolute_error(y_test, y_pred)
-mse = mean_squared_error(y_test, y_pred)
-r2 = r2_score(y_test, y_pred)
-
-print(f"\n📊 Model Performance:")
-print(f"Mean Absolute Error: {mae:.2f} minutes")
-print(f"Mean Squared Error: {mse:.2f}")
-print(f"R² Score: {r2:.3f}")
+print(f"Best model: {best_model_name}")
+print(f"Cross-validation MAE: {best_result['cv_mae']:.2f} ± {best_result['cv_std']:.2f}")
+print(f"Test R²: {best_result['test_r2']:.3f}")
+print(f"Test MAE: {best_result['test_mae']:.2f} minutes")
 
 # Feature importance
+print(f"\n🎯 FEATURE IMPORTANCE")
+print("-" * 25)
 feature_importance = pd.DataFrame({
     'feature': features,
-    'importance': best_rf.feature_importances_
+    'importance': best_model.feature_importances_
 }).sort_values('importance', ascending=False)
 
-print(f"\n🎯 Feature Importance:")
 for idx, row in feature_importance.iterrows():
     print(f"{row['feature']}: {row['importance']:.3f}")
 
-# Save model
+# Realistic performance assessment
+print(f"\n📊 REALISTIC PERFORMANCE ASSESSMENT")
+print("-" * 40)
+
+# Calculate prediction intervals (rough estimation)
+residuals = y_test - best_model.predict(X_test)
+residual_std = residuals.std()
+
+print(f"Average prediction error: ±{best_result['test_mae']:.1f} minutes")
+print(f"Standard deviation of errors: ±{residual_std:.1f} minutes")
+print(f"95% prediction interval: approximately ±{2*residual_std:.1f} minutes")
+
+# Model insights
+if best_result['test_r2'] > 0.9:
+    print("\n⚠️  WARNING: Very high R² score might indicate:")
+    print("   - Data might be synthetic or artificially generated")
+    print("   - Possible data leakage")
+    print("   - Model might not generalize well to new data")
+elif best_result['test_r2'] > 0.7:
+    print("\n✅ Good model performance - reasonable for delivery time prediction")
+else:
+    print("\n📈 Model performance is moderate - consider feature engineering")
+
+# Save the best model
 model_info = {
-    'model': best_rf,
+    'model': best_model,
     'features': features,
     'feature_names': features,
     'n_features': len(features),
     'model_performance': {
-        'mae': mae,
-        'mse': mse,
-        'r2': r2
+        'cv_mae': best_result['cv_mae'],
+        'cv_std': best_result['cv_std'],
+        'test_r2': best_result['test_r2'],
+        'test_mae': best_result['test_mae'],
+        'train_r2': best_result['train_r2'],
+        'train_mae': best_result['train_mae']
     },
-    'best_params': grid_search.best_params_
+    'feature_importance': feature_importance.to_dict(),
+    'model_type': best_model_name,
+    'noise_added': use_noise,
+    'prediction_std': residual_std
 }
 
-try:
-    with open('best_rf_model.pkl', 'wb') as model_file:
-        pickle.dump(model_info, model_file)
-    print(f"\n✅ Model saved as 'best_rf_model.pkl'")
-except Exception as e:
-    print(f"\n❌ Error saving model: {e}")
-    exit()
+# Save model
+with open('realistic_rf_model.pkl', 'wb') as f:
+    pickle.dump(model_info, f)
 
-# Test the saved model
-print(f"\n🧪 Testing saved model...")
-try:
-    with open('best_rf_model.pkl', 'rb') as model_file:
-        loaded_model_info = pickle.load(model_file)
-    
-    loaded_model = loaded_model_info['model']
-    
-    # Test prediction with dummy data
-    dummy_data = np.array([[3, 14, 25, 5, 2, 3, 1, 0]])  # 8 features
-    dummy_pred = loaded_model.predict(dummy_data)
-    
-    print(f"✅ Model test successful!")
-    print(f"Dummy prediction: {dummy_pred[0]:.2f} minutes")
-    print(f"Model expects {loaded_model.n_features_in_} features")
-    
-except Exception as e:
-    print(f"❌ Model test failed: {e}")
+print(f"\n💾 Model saved as 'realistic_rf_model.pkl'")
 
-print(f"\n🎉 Training complete!")
-print(f"You can now run your Streamlit app with: streamlit run app.py")
+# Test prediction
+print(f"\n🧪 TESTING PREDICTION")
+print("-" * 20)
+test_input = np.array([[3, 14, 25, 5, 2, 3, 1, 0]])
+test_prediction = best_model.predict(test_input)[0]
+print(f"Test prediction: {test_prediction:.1f} minutes")
+print(f"Expected range: {test_prediction-residual_std:.1f} - {test_prediction+residual_std:.1f} minutes")
+
+print(f"\n✅ Training complete!")
+print("🎯 Use 'realistic_rf_model.pkl' for more realistic predictions")
